@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Video Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        #status-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .video-info {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>YouTube Video Checker</h2>
+    <button onclick="checkVideoStatus()">Check Video Status</button>
+    <div id="status-container"></div>
+
+    <script>
+        function checkVideoStatus() {
+            const videoLinks = [
+                'https://www.youtube.com/watch?v=NxLjOCuKHFM',
+                'https://www.youtube.com/watch?v=rG1ZpmE-H5o',
+                'https://www.youtube.com/watch?v=ZG8BrakwuW8',
+                'https://www.youtube.com/watch?v=7tJNtteH6KM',
+                'https://www.youtube.com/watch?v=ThZ6dB42ls0',
+                'https://www.youtube.com/watch?v=8dQ9eIhT_rs',
+                'https://www.youtube.com/watch?v=soJt7G81UG4',
+                'https://www.youtube.com/watch?v=Y1hxPlwNl_o',
+                'https://www.youtube.com/watch?v=tWwrCJpOfIs',
+                'https://www.youtube.com/watch?v=_rKpipQY0Oc'
+            ];
+
+            const apiKey = 'AIzaSyC_eW0oEU4MBWjZkkqPE98A09JPLgaHsxU';
+
+            const statusContainer = document.getElementById('status-container');
+
+            function getVideoIdFromLink(link) {
+                const url = new URL(link);
+                const searchParams = new URLSearchParams(url.search);
+                return searchParams.get('v');
+            }
+
+            function getVideoStatus(videoId) {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=${videoId}&key=${apiKey}`;
+
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === XMLHttpRequest.DONE) {
+                            if (xhr.status === 200) {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.items && response.items.length > 0) {
+                                    const videoData = response.items[0];
+                                    const videoTitle = videoData.snippet.title;
+                                    const privacyStatus = videoData.status.privacyStatus || 'Unknown';
+                                    const ageRestriction = videoData.contentDetails.contentRating?.ytRating || 'Not Set';
+                                    const countryRestriction = videoData.contentDetails.regionRestriction?.blocked || [];
+                                    const isEmbeddable = videoData.status.embeddable || false;
+
+                                    resolve({
+                                        videoTitle,
+                                        privacyStatus,
+                                        ageRestriction,
+                                        countryRestriction,
+                                        isEmbeddable,
+                                    });
+                                } else {
+                                    resolve({
+                                        videoTitle: 'Unknown',
+                                        privacyStatus: 'Unknown',
+                                        ageRestriction: 'Not Set',
+                                        countryRestriction: [],
+                                        isEmbeddable: false,
+                                    });
+                                }
+                            } else {
+                                reject(xhr.status);
+                            }
+                        }
+                    };
+
+                    xhr.open('GET', url);
+                    xhr.send();
+                });
+            }
+
+            function displayVideoInfo(videoInfo) {
+                const videoInfoContainer = document.createElement('div');
+                videoInfoContainer.className = 'video-info';
+
+                const videoTitleElement = document.createElement('p');
+                videoTitleElement.textContent = `Video Title: ${videoInfo.videoTitle}`;
+
+                const privacyStatusElement = document.createElement('p');
+                privacyStatusElement.textContent = `Privacy Status: ${videoInfo.privacyStatus}`;
+
+                const ageRestrictionElement = document.createElement('p');
+                ageRestrictionElement.textContent = `Age Restriction: ${videoInfo.ageRestriction}`;
+
+                const countryRestrictionElement = document.createElement('p');
+                countryRestrictionElement.textContent = `Country Restriction: ${videoInfo.countryRestriction.length > 0 ? videoInfo.countryRestriction.join(', ') : 'None'}`;
+
+                const isEmbeddableElement = document.createElement('p');
+                isEmbeddableElement.textContent = `Is Embeddable: ${videoInfo.isEmbeddable}`;
+
+                videoInfoContainer.appendChild(videoTitleElement);
+                videoInfoContainer.appendChild(privacyStatusElement);
+                videoInfoContainer.appendChild(ageRestrictionElement);
+                videoInfoContainer.appendChild(countryRestrictionElement);
+                videoInfoContainer.appendChild(isEmbeddableElement);
+
+                statusContainer.appendChild(videoInfoContainer);
+            }
+
+            statusContainer.innerHTML = '';
+
+            videoLinks.forEach((link, index) => {
+                const videoId = getVideoIdFromLink(link);
+                setTimeout(() => {
+                    getVideoStatus(videoId)
+                        .then(videoInfo => {
+                            displayVideoInfo(videoInfo);
+                        })
+                        .catch(error => {
+                            console.error(`An error occurred while checking the status of ${link}: ${error}`);
+                        });
+                }, 1000 * index);
+            });
+        }
+    </script>
+</body>
+</html>
